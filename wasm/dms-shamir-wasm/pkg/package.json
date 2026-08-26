@@ -1,0 +1,16 @@
+{
+  "name": "dms_shamir_wasm",
+  "type": "module",
+  "description": "Byte-wise Shamir's Secret Sharing over GF(256), compiled to WASM for browser-side key splitting/reconstruction.",
+  "version": "0.1.0",
+  "files": [
+    "dms_shamir_wasm_bg.wasm",
+    "dms_shamir_wasm.js",
+    "dms_shamir_wasm.d.ts"
+  ],
+  "main": "dms_shamir_wasm.js",
+  "types": "dms_shamir_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
