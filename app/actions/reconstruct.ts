@@ -1,22 +1,16 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { combineShares } from '@/lib/shamir';
 
-export async function reconstructKey(switchId: string): Promise<number[]> {
+export async function fetchEncryptedShares(switchId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('recipients')
-    .select('encrypted_payload')
+    .select('email, encrypted_payload, derivation_salt')
     .eq('switch_id', switchId);
 
   if (error) throw error;
 
-  const shares = data
-    .map((r) => r.encrypted_payload)
-    .filter(Boolean) as string[];
-
-  const keyBytes = combineShares(shares);
-  return Array.from(keyBytes);
+  return data as { email: string; encrypted_payload: string; derivation_salt: string }[];
 }

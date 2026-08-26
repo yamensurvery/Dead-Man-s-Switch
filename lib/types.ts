@@ -1,0 +1,1 @@
+export type SwitchStatus = 'active' | 'grace_period' | 'triggered' | 'paused' | 'cancelled'

@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeStatus } from "@/lib/checkInStateMachine";
 
+
+
 export async function evaluateSwitch(switchId: string) {
   const supabase = await createClient();
 

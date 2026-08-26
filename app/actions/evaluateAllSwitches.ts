@@ -1,54 +1,42 @@
 "use server";
 
+import { headers } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { computeStatus } from "@/lib/checkInStateMachine";
+import { sendGracePeriodWarning, sendRecipientTriggerNotification } from "@/lib/notifications/email";
+import { evaluateAllSwitches as evaluateAllSwitchesCore } from "../../supabase/functions/_shared/evaluationCore.ts";
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const CRON_SECRET = process.env.CRON_SECRET;
+
+async function isAuthorized(): Promise<boolean> {
+  // Path 1: called (directly or via a nested call from the cron route
+  // handler) with the same CRON_SECRET bearer token GitHub Actions sends.
+  const headerList = await headers();
+  const authHeader = headerList.get("authorization");
+  if (CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`) {
+    return true;
+  }
+
+  // Path 2: called via the real Next.js Server Action RPC (e.g. from the
+  // admin page), which carries the browser's Supabase session cookie
+  // instead of a bearer token.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return !!user && !!ADMIN_EMAIL && user.email === ADMIN_EMAIL;
+}
 
 export async function evaluateAllSwitches() {
+  if (!(await isAuthorized())) {
+    throw new Error("Not authorized");
+  }
+
   const supabase = createServiceClient();
 
-  const { data: switches, error: fetchError } = await supabase
-    .from("switches")
-    .select("id, status, last_checked_in_at, next_deadline_at, grace_period_days")
-    .in("status", ["active", "grace_period"]);
-
-  if (fetchError) {
-    throw new Error(`Failed to fetch switches: ${fetchError.message}`);
-  }
-
-  const results: { id: string; changed: boolean; status: string }[] = [];
-
-  for (const sw of switches ?? []) {
-    const result = computeStatus(
-      {
-        status: sw.status,
-        lastCheckedInAt: sw.last_checked_in_at ? new Date(sw.last_checked_in_at) : null,
-        nextDeadlineAt: sw.next_deadline_at ? new Date(sw.next_deadline_at) : null,
-        gracePeriodDays: sw.grace_period_days,
-      },
-      new Date()
-    );
-
-    if (result.status === sw.status) {
-      results.push({ id: sw.id, changed: false, status: result.status });
-      continue;
-    }
-
-    const { error: updateError } = await supabase
-      .from("switches")
-      .update({
-        status: result.status,
-        ...(result.triggeredAt ? { triggered_at: result.triggeredAt.toISOString() } : {}),
-      })
-      .eq("id", sw.id);
-
-    if (updateError) {
-      console.error(`Failed to update switch ${sw.id}: ${updateError.message}`);
-      results.push({ id: sw.id, changed: false, status: sw.status });
-      continue;
-    }
-
-    results.push({ id: sw.id, changed: true, status: result.status });
-  }
-
-  return results;
+  return evaluateAllSwitchesCore({
+    supabase,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "",
+    sendGracePeriodWarning,
+    sendRecipientTriggerNotification,
+  });
 }

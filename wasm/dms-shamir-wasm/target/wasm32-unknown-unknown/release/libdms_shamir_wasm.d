@@ -1,0 +1,1 @@
+/Users/yamensurvery/Desktop/dead-man_test/dead-mans-switch/dms-shamir-wasm/target/wasm32-unknown-unknown/release/libdms_shamir_wasm.rlib: /Users/yamensurvery/Desktop/dead-man_test/dead-mans-switch/dms-shamir-wasm/src/core.rs /Users/yamensurvery/Desktop/dead-man_test/dead-mans-switch/dms-shamir-wasm/src/lib.rs

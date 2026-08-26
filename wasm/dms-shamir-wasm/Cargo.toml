@@ -1,0 +1,17 @@
+[package]
+name = "dms_shamir_wasm"
+version = "0.1.0"
+edition = "2021"
+description = "Byte-wise Shamir's Secret Sharing over GF(256), compiled to WASM for browser-side key splitting/reconstruction."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+rand = "0.8"
+getrandom = { version = "0.2", features = ["js"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
