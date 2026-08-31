@@ -33,7 +33,7 @@ export default async function SwitchDetailPage({
 
   const { data: files, error: filesError } = await supabase
     .from('encrypted_files')
-    .select('id, file_name, file_size, created_at')
+    .select('id, file_name, size_bytes, created_at')
     .eq('switch_id', id)
 
   if (recipientsError) console.error('Failed to load recipients:', recipientsError)
@@ -113,7 +113,7 @@ export default async function SwitchDetailPage({
                 >
                   <span className="text-sm text-[#E8EAED] truncate">{f.file_name}</span>
                   <span className="text-xs text-[#6B7280] shrink-0 ml-4">
-                    {formatFileSize(f.file_size)}
+                    {formatFileSize(f.size_bytes)}
                   </span>
                 </div>
               ))}
