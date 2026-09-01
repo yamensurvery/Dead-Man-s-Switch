@@ -1,5 +1,5 @@
 'use client';
-import { importKey, decryptBuffer, deriveKeyFromSecret, base64urlDecode, unpack, decrypt } from '@/lib/crypto';
+import { importKey, decryptBuffer, deriveKeyFromSecret, base64urlDecode, unpack, pack, decrypt, encrypt } from '@/lib/crypto';
 import { combineShares } from '@/lib/shamir';
 import { useEffect, useState, use } from 'react';
 import {
@@ -10,13 +10,29 @@ import {
 } from '@/app/actions/recipients';
 
 function getFragmentSecret(): Uint8Array {
-  const hash = window.location.hash; // e.g. "#s=abc123..."
+  const hash = window.location.hash; // e.g. "#s=abc123...&r=def456..."
   const params = new URLSearchParams(hash.slice(1));
   const secretParam = params.get('s');
   if (!secretParam) {
     throw new Error('Missing access secret in URL — this link may be incomplete.');
   }
   return base64urlDecode(secretParam);
+}
+
+/**
+ * The reconstruction secret is shared by every recipient of a switch — it's
+ * what lets any of them re-encrypt their share before submitting it (so the
+ * server never stores plaintext shares) and decrypt everyone's submitted
+ * share once threshold is met (so combination happens client-side).
+ */
+function getReconstructionKeyRaw(): Uint8Array {
+  const hash = window.location.hash;
+  const params = new URLSearchParams(hash.slice(1));
+  const reconstructionParam = params.get('r');
+  if (!reconstructionParam) {
+    throw new Error('Missing reconstruction secret in URL — this link may be incomplete.');
+  }
+  return base64urlDecode(reconstructionParam);
 }
 
 
@@ -59,29 +75,24 @@ export default function RecipientPortalPage({
     setError(null);
     try {
       if (!data) throw new Error('Portal data not loaded.');
-      console.log('DEBUG ownSalt specifically:', data.ownSalt, typeof data.ownSalt);
-      console.log('DEBUG ownShare specifically:', data.ownShare, typeof data.ownShare);
-      console.log('DEBUG hash:', window.location.hash);
 
       const secret = getFragmentSecret();
-      console.log('DEBUG secret:', secret);
-
       const salt = base64urlDecode(data.ownSalt);
-      console.log('DEBUG salt:', salt);
-
       const derivedKey = await deriveKeyFromSecret(secret, salt);
-      console.log('DEBUG derivedKey:', derivedKey);
 
       const { iv, ciphertext } = unpack(data.ownShare);
-      console.log('DEBUG unpacked:', iv, ciphertext);
-
       const decryptedShare = await decrypt(derivedKey, iv, ciphertext);
-      console.log('DEBUG decrypted:', decryptedShare);
 
-      await submitShare(token, decryptedShare);
+      // Re-encrypt under the reconstruction key (shared by every recipient,
+      // never sent to the server) before submitting, so the server only
+      // ever stores a share it can't itself decrypt.
+      const reconstructionKey = await importKey(getReconstructionKeyRaw());
+      const reEncrypted = await encrypt(reconstructionKey, decryptedShare);
+      const encryptedShare = pack(reEncrypted.iv, reEncrypted.ciphertext);
+
+      await submitShare(token, encryptedShare);
       await loadData();
     } catch (err) {
-      console.error('DEBUG caught error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setSubmitting(false);
@@ -92,7 +103,14 @@ export default function RecipientPortalPage({
     setDecrypting(true);
     setError(null);
     try {
-      const shares = await getCombinedShares(token);
+      const reconstructionKey = await importKey(getReconstructionKeyRaw());
+      const encryptedShares = await getCombinedShares(token);
+      const shares = await Promise.all(
+        encryptedShares.map(async (encryptedShare) => {
+          const { iv, ciphertext } = unpack(encryptedShare);
+          return decrypt(reconstructionKey, iv, ciphertext);
+        })
+      );
       const keyBytes = await combineShares(shares);
       const key = await importKey(keyBytes);
 
