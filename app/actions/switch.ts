@@ -54,7 +54,8 @@ export async function createSwitch(
     derivationSalt: string;
     fragmentSecret: string;
   }[],
-  threshold: number
+  threshold: number,
+  reconstructionSecret: string
 ) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -103,7 +104,7 @@ export async function createSwitch(
     const match = recipients.find(r => r.email === row.email);
     if (!match) continue;
 
-    const accessUrl = `${process.env.NEXT_PUBLIC_APP_URL}/recipient/${row.access_token}#s=${match.fragmentSecret}`;
+    const accessUrl = `${process.env.NEXT_PUBLIC_APP_URL}/recipient/${row.access_token}#s=${match.fragmentSecret}&r=${reconstructionSecret}`;
 
     const result = await sendRecipientInviteNotification({
       to: row.email,
