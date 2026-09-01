@@ -103,6 +103,15 @@ export default function NewSwitchPage() {
       // 2. Split it — one share per recipient.
       const shares = await splitKey(keyBytes, threshold, recipients.length);
 
+      // 2b. Generate a reconstruction key, shared by every recipient of this
+      //     switch. It rides in every invite link's URL fragment (never
+      //     persisted server-side) and is used to re-encrypt a recipient's
+      //     share before it's submitted, so the server only ever stores
+      //     shares it cannot itself decrypt — even once threshold-many are
+      //     in the database.
+      const reconstructionKey = await generateKey();
+      const reconstructionSecret = base64urlEncode(await exportKey(reconstructionKey));
+
       // 3. Per recipient: fresh secret + salt, derive an HKDF key from it,
       //    encrypt that recipient's share, hash the secret for server-side
       //    verification only. The raw secret becomes the URL fragment.
@@ -134,11 +143,15 @@ export default function NewSwitchPage() {
       }
 
       // 5. Create the switch. The server never sees the master key, the raw
-      //    shares, or the plaintext message.
+      //    shares, or the plaintext message. It does transiently see
+      //    reconstructionSecret (to embed it in the invite emails it sends),
+      //    the same way it already sees each fragmentSecret — neither is
+      //    ever persisted to the database.
       const { switchId, failedInvites } = await createSwitch(
         { label: label.trim(), checkInIntervalDays, gracePeriodDays, encryptedMessage },
         preparedRecipients,
-        threshold
+        threshold,
+        reconstructionSecret
       );
 
       // 6. Files can only be attached once the switch exists (they're
