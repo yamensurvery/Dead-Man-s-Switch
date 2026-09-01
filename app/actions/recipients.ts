@@ -54,8 +54,6 @@ export async function getRecipientPortalData(token: string) {
     .eq('recipient_id', recipient.id)
     .maybeSingle();
 
-  console.log('SERVER DEBUG recipient row:', recipient);
-
   return {
     switchLabel: sw.label,
     threshold: sw.threshold,
@@ -68,12 +66,15 @@ export async function getRecipientPortalData(token: string) {
 }
 
 /**
- * Records that this recipient has contributed their share. The share
- * arrives here ALREADY DECRYPTED — the server never derives the key or
- * touches ciphertext for this operation. It only stores the plaintext
- * share the recipient's own browser produced using their fragment secret.
+ * Records that this recipient has contributed their share. `encryptedShare`
+ * is the recipient's plaintext share, re-encrypted client-side under the
+ * switch's shared reconstruction key (which lives only in every recipient's
+ * URL fragment, never on the server). The server stores and later returns
+ * this ciphertext verbatim — it never holds a key that can open it, so even
+ * once `threshold` rows exist in this table, the server itself still can't
+ * reconstruct the secret.
  */
-export async function submitShare(token: string, decryptedShare: string) {
+export async function submitShare(token: string, encryptedShare: string) {
   const supabase = createServiceClient();
 
   const { data: recipient, error: recError } = await supabase
@@ -101,7 +102,7 @@ export async function submitShare(token: string, decryptedShare: string) {
     .insert({
       switch_id: recipient.switch_id,
       recipient_id: recipient.id,
-      share: decryptedShare,   // plaintext now, supplied by the caller
+      share: encryptedShare,   // ciphertext under the reconstruction key
     });
 
   if (insertError && insertError.code !== '23505') {
@@ -120,14 +121,13 @@ export async function submitShare(token: string, decryptedShare: string) {
   return { submittedCount: count ?? 0 };
 }
 
-// getCombinedShares and getFilesForSwitch: unchanged — they already just
-// read from submitted_shares.share, which now correctly holds plaintext.
-
 /**
- * Once threshold is met, returns every submitted share for this
- * recipient's switch so the client can combine them and reconstruct
- * the key. Re-verifies the token and threshold server-side rather than
- * trusting the caller's claim that "enough" shares exist.
+ * Once threshold is met, returns every submitted share (still encrypted
+ * under the switch's reconstruction key) for this recipient's switch, so
+ * the client can decrypt each one with that key — recovered from its own
+ * URL fragment — before combining them to reconstruct the master key.
+ * Re-verifies the token and threshold server-side rather than trusting the
+ * caller's claim that "enough" shares exist.
  */
 export async function getCombinedShares(token: string) {
   const supabase = createServiceClient();
