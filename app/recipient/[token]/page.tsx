@@ -53,6 +53,7 @@ export default function RecipientPortalPage({
   const [error, setError] = useState<string | null>(null);
   const [decrypting, setDecrypting] = useState(false);
   const [files, setFiles] = useState<FileMeta[] | null>(null);
+  const [recipientKey, setRecipientKey] = useState<CryptoKey | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -117,9 +118,9 @@ export default function RecipientPortalPage({
       const fileList = await getFilesForSwitch(token);
       setFiles(fileList);
 
-      // Stash the reconstructed key on window for the download handler below.
-      // Kept in memory only — never sent back to the server.
-      (window as unknown as { __recipientKey: CryptoKey }).__recipientKey = key;
+      // Kept in component state only — never sent back to the server, and
+      // not reachable as a global off `window` (see handleDownload).
+      setRecipientKey(key);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not unlock yet.');
     } finally {
@@ -130,13 +131,12 @@ export default function RecipientPortalPage({
   async function handleDownload(file: FileMeta) {
     setError(null);
     try {
-      const key = (window as unknown as { __recipientKey?: CryptoKey }).__recipientKey;
-      if (!key) {
+      if (!recipientKey) {
         throw new Error('Key not loaded — click "Unlock" first.');
       }
 
       const { downloadAndDecryptFile } = await import('@/lib/files');
-      const decrypted = await downloadAndDecryptFile(file.storage_path, file.iv, key);
+      const decrypted = await downloadAndDecryptFile(file.storage_path, file.iv, recipientKey);
 
       const blob = new Blob([decrypted]);
       const url = URL.createObjectURL(blob);

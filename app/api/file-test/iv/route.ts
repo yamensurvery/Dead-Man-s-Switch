@@ -8,10 +8,20 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  // Only return the IV for a file that belongs to a switch this user owns —
+  // otherwise any signed-in user could probe/enumerate other users' storage
+  // paths via this test endpoint.
   const { data, error } = await supabase
     .from("encrypted_files")
-    .select("iv")
+    .select("iv, switches!inner(user_id)")
     .eq("storage_path", path)
+    .eq("switches.user_id", user.id)
     .single();
 
   if (error || !data) {

@@ -42,14 +42,20 @@ export async function updateSession(request: NextRequest) {
 
   const user = data?.claims
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
-  ) {
+  // Routes that must work with no session at all: the marketing page, the
+  // login/signup/confirm flow, and the recipient portal (recipients never
+  // sign up — they only ever hold a token link, so gating this behind login
+  // would lock every recipient out).
+  const { pathname } = request.nextUrl
+  const isPublicPath =
+    pathname === '/' ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/recipient')
+
+  if (!user && !isPublicPath) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 
