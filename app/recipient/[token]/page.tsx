@@ -67,7 +67,9 @@ export default function RecipientPortalPage({
   }
 
   useEffect(() => {
-    loadData();
+    (async () => {
+      await loadData();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 

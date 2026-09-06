@@ -85,7 +85,7 @@ export default function Home() {
 
         <footer className="py-16 border-t border-white/[0.06]">
           <p className="font-mono text-sm text-[#6B7280]">
-            Built as a self-sovereign dead man's switch — your keys, your
+            Built as a self-sovereign dead man&apos;s switch — your keys, your
             threshold, your recipients.
           </p>
         </footer>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, type FormEvent } from 'react';
+import { useState, useMemo, type FormEvent } from 'react';
 import {
   generateKey,
   exportKey,
@@ -34,6 +34,7 @@ export default function NewSwitchPage() {
   const [recipients, setRecipients] = useState<RecipientRow[]>([newRow(), newRow()]);
   const [threshold, setThreshold] = useState(majorityThreshold(2));
   const [thresholdTouched, setThresholdTouched] = useState(false);
+  const [prevRecipientCount, setPrevRecipientCount] = useState(recipients.length);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +43,14 @@ export default function NewSwitchPage() {
   // Re-default the threshold to majority whenever the recipient count changes,
   // unless the user has manually overridden it — in which case we just clamp
   // it into range rather than silently discarding their choice.
-  useEffect(() => {
-    const n = recipients.length;
-    setThreshold((prev) => {
-      if (!thresholdTouched) return majorityThreshold(n);
-      return Math.min(Math.max(prev, 2), n);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipients.length]);
+  if (recipients.length !== prevRecipientCount) {
+    setPrevRecipientCount(recipients.length);
+    setThreshold(
+      thresholdTouched
+        ? Math.min(Math.max(threshold, 2), recipients.length)
+        : majorityThreshold(recipients.length)
+    );
+  }
 
   const validEmails = useMemo(
     () => recipients.map((r) => r.email.trim()).filter((e) => e.length > 0),
