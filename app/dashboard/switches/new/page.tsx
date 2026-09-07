@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, type FormEvent } from 'react';
+import Link from 'next/link';
 import {
   generateKey,
   exportKey,
@@ -204,13 +205,21 @@ export default function NewSwitchPage() {
                 Invite email failed for: {result.failedInvites.join(', ')}
               </p>
             )}
-            <button
-              type="button"
-              onClick={() => setResult(null)}
-              className="mt-4 text-sm text-zinc-400 underline decoration-zinc-600 underline-offset-4 hover:text-zinc-200"
-            >
-              Create another
-            </button>
+            <div className="mt-4 flex items-center gap-4">
+              <Link
+                href="/dashboard"
+                className="text-sm text-amber-500 hover:text-amber-400"
+              >
+                Back to dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={() => setResult(null)}
+                className="text-sm text-zinc-400 underline decoration-zinc-600 underline-offset-4 hover:text-zinc-200"
+              >
+                Create another
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-8">
