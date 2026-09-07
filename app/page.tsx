@@ -59,7 +59,7 @@ export default function Home() {
           <ol className="relative flex flex-col gap-10 border-l border-white/[0.08] pl-8">
             <Step
               title="Encrypt something worth protecting"
-              body="Your files and messages are encrypted in your browser before anything reaches a server. Nobody but you holds the key to what you seal."
+              body="Your files and messages are encrypted in your browser before anything reaches a server. The key is destroyed once it's split."
             />
             <Step
               title="Check in on your own schedule"
@@ -79,7 +79,7 @@ export default function Home() {
           <div className="flex flex-col gap-4">
             <Fact text="Encryption happens in your browser — plaintext never touches our servers." />
             <Fact text="Your secret is split with Shamir's Secret Sharing, so no single recipient can open it alone." />
-            <Fact text="We store what we can't read: ciphertext, share fragments, nothing more." />
+            <Fact text="Your files, message, and secret shares are stored as ciphertext we can't read." />
           </div>
         </section>
 
