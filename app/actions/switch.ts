@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { sendCheckInConfirmation, sendRecipientInviteNotification } from '@/lib/notifications/email';
+import { sendRecipientInviteNotification } from '@/lib/notifications/email';
 
 export async function checkIn(switchId: string) {
   const supabase = await createClient();
