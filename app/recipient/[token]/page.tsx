@@ -1,5 +1,5 @@
 'use client';
-import { importKey, decryptBuffer, deriveKeyFromSecret, base64urlDecode, unpack, pack, decrypt, encrypt } from '@/lib/crypto';
+import { importKey, deriveKeyFromSecret, base64urlDecode, unpack, pack, decrypt, encrypt } from '@/lib/crypto';
 import { combineShares } from '@/lib/shamir';
 import { useEffect, useState, use } from 'react';
 import {
